@@ -1,6 +1,8 @@
-# Fabric Commerce Analytics
+## Microsoft Fabric Workspace
 
-End-to-end sales analytics solution built with Microsoft Fabric.
+The workspace contains the complete analytics solution, including the source SQL database, ingestion job, Lakehouse, transformation notebook, Direct Lake semantic model, Power BI report, and organizational app.
+
+docs/images/fabric-workspace-overview.png
 
 ## Architecture
 
