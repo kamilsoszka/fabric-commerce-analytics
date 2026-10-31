@@ -1,0 +1,11 @@
+expression 'DirectLake - CommerceLakehouse' =
+		let
+		    Source = AzureStorage.DataLake("https://onelake.dfs.fabric.microsoft.com/8f884394-33ba-4d62-bed2-a3f3e69c2dc0/d99dfe8a-81cb-4e39-9c51-28f1a1120ecf", [HierarchicalNavigation=true])
+		in
+		    Source
+	lineageTag: 7f75a1fc-1cda-4371-80f5-4d98c5299bb5
+
+	annotation PBI_IncludeFutureArtifacts = False
+
+	annotation PBI_RemovedChildren = [{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[bronze].[product_category]"}},"objectType":"Table"},{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[bronze].[product]"}},"objectType":"Table"},{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[bronze].[sales_order_detail]"}},"objectType":"Table"},{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[bronze].[sales_order_header]"}},"objectType":"Table"},{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[bronze].[customer]"}},"objectType":"Table"},{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[silver].[sales]"}},"objectType":"Table"}]
+

@@ -1,0 +1,256 @@
+{
+  "properties": {
+    "jobMode": "CDC",
+    "fullLoadBehavior": "Truncate",
+    "source": {
+      "type": "FabricSqlDatabaseTable",
+      "connectionSettings": {
+        "type": "FabricSqlDatabase",
+        "typeProperties": {
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "artifactId": "ed542702-62a4-8c3e-4df2-c6f4538fad17"
+        },
+        "externalReferences": {
+          "connection": "c8abd962-725f-45d2-ae28-889211a597c4"
+        }
+      }
+    },
+    "destination": {
+      "type": "LakehouseTable",
+      "connectionSettings": {
+        "type": "Lakehouse",
+        "typeProperties": {
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "artifactId": "a1120ecf-28f1-9c51-4e39-81cbd99dfe8a",
+          "rootFolder": "Tables"
+        }
+      }
+    },
+    "policy": {
+      "timeout": "0.12:00:00",
+      "retry": 0
+    }
+  },
+  "activities": [
+    {
+      "id": "acfa640e-b2fc-44c8-a0ce-20a836fffeb2",
+      "properties": {
+        "source": {
+          "datasetSettings": {
+            "schema": "SalesLT",
+            "table": "Customer"
+          },
+          "changeDataSettings": {
+            "readMethod": "SnapshotPlusIncremental",
+            "columns": [
+              {
+                "name": "CustomerID",
+                "type": "Int32",
+                "physicalType": "int"
+              }
+            ],
+            "nullWatermarkBehavior": "Skip"
+          },
+          "partitionSettings": {
+            "partitionOption": "None"
+          }
+        },
+        "destination": {
+          "writeBehavior": "Append",
+          "datasetSettings": {
+            "schema": "bronze",
+            "table": "customer"
+          },
+          "applyVOrder": false,
+          "enableTimestampNtz": false
+        },
+        "enableStaging": false,
+        "translator": {
+          "type": "TabularTranslator"
+        },
+        "typeConversionSettings": {
+          "typeConversion": {
+            "allowDataTruncation": true,
+            "treatBooleanAsNumber": false
+          }
+        }
+      }
+    },
+    {
+      "id": "086d93fb-72ed-4feb-9205-2b03d41ee943",
+      "properties": {
+        "source": {
+          "datasetSettings": {
+            "schema": "SalesLT",
+            "table": "Product"
+          },
+          "changeDataSettings": {
+            "readMethod": "SnapshotPlusIncremental",
+            "columns": [
+              {
+                "name": "ProductID",
+                "type": "Int32",
+                "physicalType": "int"
+              }
+            ],
+            "nullWatermarkBehavior": "Skip"
+          },
+          "partitionSettings": {
+            "partitionOption": "None"
+          }
+        },
+        "destination": {
+          "writeBehavior": "Append",
+          "datasetSettings": {
+            "schema": "bronze",
+            "table": "product"
+          },
+          "applyVOrder": false,
+          "enableTimestampNtz": false
+        },
+        "enableStaging": false,
+        "translator": {
+          "type": "TabularTranslator"
+        },
+        "typeConversionSettings": {
+          "typeConversion": {
+            "allowDataTruncation": true,
+            "treatBooleanAsNumber": false
+          }
+        }
+      }
+    },
+    {
+      "id": "887b68d1-373b-48eb-865f-52f83a6257b3",
+      "properties": {
+        "source": {
+          "datasetSettings": {
+            "schema": "SalesLT",
+            "table": "ProductCategory"
+          },
+          "changeDataSettings": {
+            "readMethod": "SnapshotPlusIncremental",
+            "columns": [
+              {
+                "name": "ProductCategoryID",
+                "type": "Int32",
+                "physicalType": "int"
+              }
+            ],
+            "nullWatermarkBehavior": "Skip"
+          },
+          "partitionSettings": {
+            "partitionOption": "None"
+          }
+        },
+        "destination": {
+          "writeBehavior": "Append",
+          "datasetSettings": {
+            "schema": "bronze",
+            "table": "product_category"
+          },
+          "applyVOrder": false,
+          "enableTimestampNtz": false
+        },
+        "enableStaging": false,
+        "translator": {
+          "type": "TabularTranslator"
+        },
+        "typeConversionSettings": {
+          "typeConversion": {
+            "allowDataTruncation": true,
+            "treatBooleanAsNumber": false
+          }
+        }
+      }
+    },
+    {
+      "id": "af060673-1d2b-4502-b778-a0ca0baccef7",
+      "properties": {
+        "source": {
+          "datasetSettings": {
+            "schema": "SalesLT",
+            "table": "SalesOrderDetail"
+          },
+          "changeDataSettings": {
+            "readMethod": "SnapshotPlusIncremental",
+            "columns": [
+              {
+                "name": "SalesOrderID",
+                "type": "Int32",
+                "physicalType": "int"
+              }
+            ],
+            "nullWatermarkBehavior": "Skip"
+          },
+          "partitionSettings": {
+            "partitionOption": "None"
+          }
+        },
+        "destination": {
+          "writeBehavior": "Append",
+          "datasetSettings": {
+            "schema": "bronze",
+            "table": "sales_order_detail"
+          },
+          "applyVOrder": false,
+          "enableTimestampNtz": false
+        },
+        "enableStaging": false,
+        "translator": {
+          "type": "TabularTranslator"
+        },
+        "typeConversionSettings": {
+          "typeConversion": {
+            "allowDataTruncation": true,
+            "treatBooleanAsNumber": false
+          }
+        }
+      }
+    },
+    {
+      "id": "e96f9d3f-8f19-4396-b597-551c567ee7d1",
+      "properties": {
+        "source": {
+          "datasetSettings": {
+            "schema": "SalesLT",
+            "table": "SalesOrderHeader"
+          },
+          "changeDataSettings": {
+            "readMethod": "SnapshotPlusIncremental",
+            "columns": [
+              {
+                "name": "SalesOrderID",
+                "type": "Int32",
+                "physicalType": "int"
+              }
+            ],
+            "nullWatermarkBehavior": "Skip"
+          },
+          "partitionSettings": {
+            "partitionOption": "None"
+          }
+        },
+        "destination": {
+          "writeBehavior": "Append",
+          "datasetSettings": {
+            "schema": "bronze",
+            "table": "sales_order_header"
+          },
+          "applyVOrder": false,
+          "enableTimestampNtz": false
+        },
+        "enableStaging": false,
+        "translator": {
+          "type": "TabularTranslator"
+        },
+        "typeConversionSettings": {
+          "typeConversion": {
+            "allowDataTruncation": true,
+            "treatBooleanAsNumber": false
+          }
+        }
+      }
+    }
+  ]
+}

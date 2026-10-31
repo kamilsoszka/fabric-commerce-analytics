@@ -1,0 +1,31 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/orgapp/definition/orgAppDefinition/2.0.0/schema.json",
+  "settings": {
+    "experienceSettings": {
+      "navigationPane": {
+        "isHidden": false,
+        "isCollapsed": true,
+        "independentPageNavigation": false
+      }
+    }
+  },
+  "elements": [
+    {
+      "elementType": "overview",
+      "elementId": "b705e0f2-0d28-43a2-96a8-162913ad1eb0",
+      "header": {
+        "title": "Commerce Sales Analytics",
+        "body": "Interactive sales analytics covering revenue, orders, customers, products, quantities, and discounts.",
+        "showTheme": true
+      },
+      "displayName": "Commerce Analytics"
+    },
+    {
+      "elementType": "item",
+      "elementId": "46bad6b2-920b-4cde-8237-a58c4f087145",
+      "itemType": "Report",
+      "itemLogicalId": "1b3f55e7-ddc8-bd16-4f03-7e138f9d2626",
+      "displayName": "CommerceSalesReport"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+table dim_product
+	lineageTag: 35284719-bd51-4300-82e7-49f745dda646
+	sourceLineageTag: [gold].[dim_product]
+
+	column product_id
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 2df3e7ae-ea17-4476-8bd6-155cbd18071b
+		sourceLineageTag: product_id
+		summarizeBy: none
+		sourceColumn: product_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_name
+		dataType: string
+		lineageTag: 66c330e8-753c-4471-9f17-4dc25c8a912c
+		sourceLineageTag: product_name
+		summarizeBy: none
+		sourceColumn: product_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_number
+		dataType: string
+		lineageTag: 209b9ee3-90f3-4715-a0a0-d9c774e7a513
+		sourceLineageTag: product_number
+		summarizeBy: none
+		sourceColumn: product_number
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_color
+		dataType: string
+		lineageTag: 6593f403-bc5d-490e-9518-0bba2d5499ef
+		sourceLineageTag: product_color
+		summarizeBy: none
+		sourceColumn: product_color
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_product = entity
+		mode: directLake
+		source
+			entityName: dim_product
+			schemaName: gold
+			expressionSource: 'DirectLake - CommerceLakehouse'
+

@@ -1,0 +1,91 @@
+table dax
+	lineageTag: 03da53e6-9757-416b-85e1-45c4bd7ef865
+	sourceLineageTag: [gold].[dax]
+
+	measure 'Total Sales' = SUM(fact_sales[line_total])
+		formatString: $#,0.00;($#,0.00);$#,0.00
+		displayFolder: Sales
+		lineageTag: 2b6c993a-8a1e-4564-8b77-8815e85005f9
+
+	measure 'Total Quantity' = SUM(fact_sales[order_quantity])
+		formatString: #,0
+		displayFolder: Sales
+		lineageTag: 4c64e8cd-237e-4284-b4e5-957d7a4dd5b6
+
+	measure 'Total Orders' = DISTINCTCOUNT(fact_sales[sales_order_id])
+		formatString: #,0
+		displayFolder: Counts
+		lineageTag: c4166150-4278-4626-9e33-5944fa25ccd1
+
+	measure 'Sales Lines' = COUNTROWS(fact_sales)
+		formatString: #,0
+		displayFolder: Counts
+		lineageTag: f2691323-06fc-491f-8bc5-2658680a8fe1
+
+	measure Customers = DISTINCTCOUNT(fact_sales[customer_id])
+		formatString: #,0
+		displayFolder: Counts
+		lineageTag: cd1aeeba-a305-4576-93b0-1dc134c4faef
+
+	measure 'Products Sold' = DISTINCTCOUNT(fact_sales[product_id])
+		formatString: #,0
+		displayFolder: Counts
+		lineageTag: 45e0d9da-1779-46f9-95f0-44b6edb15f09
+
+	measure 'Average Order Value' = DIVIDE([Total Sales], [Total Orders])
+		formatString: $#,0.00;($#,0.00);$#,0.00
+		displayFolder: Averages
+		lineageTag: f19dd01f-4b6b-45a1-aff1-02358b09eb6b
+
+	measure 'Average Sales Line Value' = DIVIDE([Total Sales], [Sales Lines])
+		formatString: $#,0.00;($#,0.00);$#,0.00
+		displayFolder: Averages
+		lineageTag: ed12bcce-2261-47c7-9883-2196419dafcd
+
+	measure 'Average Unit Price' = DIVIDE(SUMX(fact_sales, fact_sales[unit_price] * fact_sales[order_quantity]), [Total Quantity])
+		formatString: $#,0.00;($#,0.00);$#,0.00
+		displayFolder: Averages
+		lineageTag: e6942781-08ef-4ead-bac3-9b529fc48d68
+
+	measure 'Gross Sales Before Discount' = SUMX(fact_sales, fact_sales[order_quantity] * fact_sales[unit_price])
+		formatString: $#,0.00;($#,0.00);$#,0.00
+		displayFolder: Discounts
+		lineageTag: 2a4e6b79-19bc-4605-9ffd-882cbb9a2e5c
+
+	measure 'Discount Amount' = [Gross Sales Before Discount] - [Total Sales]
+		formatString: $#,0.00;($#,0.00);$#,0.00
+		displayFolder: Discounts
+		lineageTag: b7820699-2435-43b3-85f6-095e4df045cf
+
+	measure 'Discount Percentage' = DIVIDE([Discount Amount], [Gross Sales Before Discount])
+		formatString: 0.00%
+		displayFolder: Discounts
+		lineageTag: 5f9f2233-1dda-439c-a638-11fbe8050285
+
+	measure 'Sales by Due Date' = CALCULATE([Total Sales], USERELATIONSHIP(fact_sales[due_date_key], dim_date[date_key]))
+		formatString: $#,0.00;($#,0.00);$#,0.00
+		displayFolder: Alternate Dates
+		lineageTag: e26c3d62-dfae-41e3-b83e-edb07c8fd127
+
+	measure 'Sales by Ship Date' = CALCULATE([Total Sales], USERELATIONSHIP(fact_sales[ship_date_key], dim_date[date_key]))
+		formatString: $#,0.00;($#,0.00);$#,0.00
+		displayFolder: Alternate Dates
+		lineageTag: b788ac5b-302f-4a67-af22-fae3f21baf3d
+
+	column measure_group
+		dataType: string
+		isHidden
+		lineageTag: 39f8380e-93c7-49a7-a671-22fb0a606a39
+		sourceLineageTag: measure_group
+		summarizeBy: none
+		sourceColumn: measure_group
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dax = entity
+		mode: directLake
+		source
+			entityName: dax
+			schemaName: gold
+			expressionSource: 'DirectLake - CommerceLakehouse'
+

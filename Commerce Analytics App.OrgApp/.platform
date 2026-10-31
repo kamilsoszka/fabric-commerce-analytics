@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "OrgApp",
+    "displayName": "Commerce Analytics App",
+    "description": "Sales performance overview with customer, product, and revenue analysis."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "3f89631e-6b81-af5d-474b-028ed361bc84"
+  }
+}

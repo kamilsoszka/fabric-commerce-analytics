@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/orgappaudience/definition/orgAppAudienceDefinition/1.0.0/schema.json",
+  "settings": {
+    "hasAccessToHiddenContent": false,
+    "tabOrder": 0
+  },
+  "parentAppId": "3f89631e-6b81-af5d-474b-028ed361bc84",
+  "elementReferences": [
+    {
+      "elementId": "46bad6b2-920b-4cde-8237-a58c4f087145",
+      "itemType": "Report",
+      "itemLogicalId": "1b3f55e7-ddc8-bd16-4f03-7e138f9d2626"
+    },
+    {
+      "elementId": "b705e0f2-0d28-43a2-96a8-162913ad1eb0"
+    }
+  ]
+}

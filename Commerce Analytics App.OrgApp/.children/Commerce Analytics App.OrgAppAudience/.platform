@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "OrgAppAudience",
+    "displayName": "Commerce Analytics App"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "bf59fe0c-5e27-8522-4cd0-0e798fc30374"
+  }
+}

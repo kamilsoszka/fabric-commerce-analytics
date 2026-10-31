@@ -1,0 +1,143 @@
+table fact_sales
+	lineageTag: 457ce9fe-0d2a-46ca-91d9-c6db8b35ace0
+	sourceLineageTag: [gold].[fact_sales]
+
+	column sales_order_detail_id
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: cf493402-bde2-4c6a-a5aa-155cafe0d250
+		sourceLineageTag: sales_order_detail_id
+		summarizeBy: none
+		sourceColumn: sales_order_detail_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column sales_order_id
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: eb6cc28c-6586-4d2c-8953-36c7e2130d53
+		sourceLineageTag: sales_order_id
+		summarizeBy: none
+		sourceColumn: sales_order_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column order_date_key
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: e75adf71-65ad-4b23-be3e-505705539f6d
+		sourceLineageTag: order_date_key
+		summarizeBy: none
+		sourceColumn: order_date_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column due_date_key
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 350ad62d-2b0e-4c7d-a289-52ab5829554e
+		sourceLineageTag: due_date_key
+		summarizeBy: none
+		sourceColumn: due_date_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column ship_date_key
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 83bd9e76-29bc-4233-ae96-32c30cac5e25
+		sourceLineageTag: ship_date_key
+		summarizeBy: none
+		sourceColumn: ship_date_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column customer_id
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 5f60699a-85c9-4f3c-8298-a7c02b16b32c
+		sourceLineageTag: customer_id
+		summarizeBy: none
+		sourceColumn: customer_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_id
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 45c98991-3c49-4a0a-87dc-a4149c9adbee
+		sourceLineageTag: product_id
+		summarizeBy: none
+		sourceColumn: product_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column order_status
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 420e3f67-e821-4ea9-824c-3c0c74761a40
+		sourceLineageTag: order_status
+		summarizeBy: none
+		sourceColumn: order_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column order_quantity
+		dataType: int64
+		isHidden
+		formatString: #,0
+		lineageTag: 71237f3f-cbc0-4675-aef0-40217ff2fe34
+		sourceLineageTag: order_quantity
+		summarizeBy: none
+		sourceColumn: order_quantity
+
+		annotation SummarizationSetBy = Automatic
+
+	column unit_price
+		dataType: decimal
+		isHidden
+		formatString: $#,0.00;($#,0.00);$#,0.00
+		lineageTag: 6b2b310c-e7c3-4ffa-a53f-1f4b6f36ea06
+		sourceLineageTag: unit_price
+		summarizeBy: none
+		sourceColumn: unit_price
+
+		annotation SummarizationSetBy = Automatic
+
+	column unit_price_discount
+		dataType: decimal
+		isHidden
+		formatString: 0.00%
+		lineageTag: fb5a2ce5-b4fe-42a2-9225-9db031277f79
+		sourceLineageTag: unit_price_discount
+		summarizeBy: none
+		sourceColumn: unit_price_discount
+
+		annotation SummarizationSetBy = Automatic
+
+	column line_total
+		dataType: double
+		isHidden
+		formatString: $#,0.00;($#,0.00);$#,0.00
+		lineageTag: 82240067-db78-4281-804a-78f7aee7f875
+		sourceLineageTag: line_total
+		summarizeBy: none
+		sourceColumn: line_total
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fact_sales = entity
+		mode: directLake
+		source
+			entityName: fact_sales
+			schemaName: gold
+			expressionSource: 'DirectLake - CommerceLakehouse'
+

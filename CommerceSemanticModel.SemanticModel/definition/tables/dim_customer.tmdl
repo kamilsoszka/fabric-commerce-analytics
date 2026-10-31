@@ -1,0 +1,40 @@
+table dim_customer
+	lineageTag: 7c9113c6-f268-4f42-aa29-a732a4632ff6
+	sourceLineageTag: [gold].[dim_customer]
+
+	column customer_id
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: fbf7a6bf-3e2e-4e81-bde8-2f16b0e22a80
+		sourceLineageTag: customer_id
+		summarizeBy: none
+		sourceColumn: customer_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column customer_name
+		dataType: string
+		lineageTag: 5af47b86-8b6b-4e37-a683-16a8e3b2a369
+		sourceLineageTag: customer_name
+		summarizeBy: none
+		sourceColumn: customer_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column company_name
+		dataType: string
+		lineageTag: b1eb2201-5d08-4125-b2cf-7ee81fe156a3
+		sourceLineageTag: company_name
+		summarizeBy: none
+		sourceColumn: company_name
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_customer = entity
+		mode: directLake
+		source
+			entityName: dim_customer
+			schemaName: gold
+			expressionSource: 'DirectLake - CommerceLakehouse'
+
