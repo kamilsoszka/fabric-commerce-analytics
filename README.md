@@ -2,7 +2,7 @@
 
 The workspace contains the complete analytics solution, including the source SQL database, ingestion job, Lakehouse, transformation notebook, Direct Lake semantic model, Power BI report, and organizational app.
 
-docs/images/fabric-workspace-overview.png
+![Microsoft Fabric workspace overview](docs/images/fabric-workspace-overview.png)
 
 ## Architecture
 
