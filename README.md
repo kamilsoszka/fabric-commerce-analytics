@@ -82,4 +82,4 @@ Fabric-generated folders contain the source definitions for the SQL database, La
 
 ## License
 
-This project is published for portfolio and educational purposes.
+This project is licensed under the terms specified in the [LICENSE](LICENSE) file.
