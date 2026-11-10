@@ -1,16 +1,27 @@
 # Microsoft Fabric Commerce Analytics
 
-End-to-end sales analytics solution built with Microsoft Fabric, featuring a Bronze-Silver-Gold architecture, PySpark transformations, a Direct Lake semantic model, Power BI reporting, and Git integration.
+An end-to-end commerce analytics solution built in Microsoft Fabric using a SQL database, Copy Job ingestion, a Lakehouse medallion architecture, PySpark transformations, a Direct Lake semantic model, Power BI, a Fabric organizational app, and Git source control.
 
-## Project Overview
+## Solution overview
 
-This project demonstrates a complete analytics workflow built with Microsoft Fabric and AdventureWorks data. It covers source ingestion, Lakehouse storage, data transformation, dimensional modeling, semantic modeling, reporting, application delivery, data-quality validation, and source control.
+The solution ingests AdventureWorks sales data into Microsoft Fabric, transforms it through Bronze, Silver, and Gold layers, and exposes a dimensional model through Direct Lake for Power BI reporting.
 
-## Microsoft Fabric Workspace
+### Components
+
+- Microsoft Fabric SQL Database: `AdventureWorksSource`
+- Copy Job: `LoadAdventureWorks`
+- Lakehouse: `CommerceLakehouse`
+- PySpark notebook: `TransformAdventureWorks`
+- Semantic model: `CommerceSemanticModel`
+- Power BI report: `CommerceSalesReport`
+- Fabric Org App: `Commerce Analytics App`
+- GitHub source control
+
+## Microsoft Fabric workspace
 
 The workspace contains the complete analytics solution, including the source SQL database, ingestion job, Lakehouse, transformation notebook, Direct Lake semantic model, Power BI report, and organizational app.
 
-![Microsoft Fabric workspace overview](docs/images/fabric-workspace-overview.png)
+![Microsoft Fabric workspace overview](docs/images/03-fabric-workspace-overview.png)
 
 ## Architecture
 
@@ -20,50 +31,21 @@ The project implements a medallion architecture:
 - **Silver:** cleaned and validated sales data
 - **Gold:** dimensional star schema optimized for analytics
 
-## Data Flow
+### Data flow
 
 ```text
 AdventureWorks SQL Database
-        |
-        v
-Fabric Copy Job
-        |
-        v
-Bronze tables
-        |
-        v
-PySpark transformations
-        |
-        v
-Silver sales table
-        |
-        v
-Gold star schema
-        |
-        v
-Direct Lake semantic model
-        |
-        v
-Power BI report
-        |
-        v
-Fabric Org App
+→ Fabric Copy Job
+→ Bronze tables
+→ PySpark transformations
+→ Silver sales table
+→ Gold star schema
+→ Direct Lake semantic model
+→ Power BI report
+→ Fabric Org App
 ```
 
-## Components
-
-- Microsoft Fabric SQL Database
-- Fabric Copy Job
-- Fabric Lakehouse
-- PySpark Notebook
-- Delta tables
-- Direct Lake semantic model
-- DAX measures
-- Power BI report
-- Fabric Org App
-- GitHub source control
-
-## Analytical Model
+## Analytical model
 
 The Gold layer contains:
 
@@ -75,9 +57,9 @@ The Gold layer contains:
 
 The semantic model includes active relationships for customers, products, and order dates, together with inactive relationships for due dates and ship dates.
 
-![Direct Lake semantic model](docs/images/02_direct-lake-semantic-model.png)
+![Direct Lake semantic model](docs/images/02-direct-lake-semantic-model.png)
 
-## Data Quality
+## Data quality
 
 The transformation notebook validates:
 
@@ -92,66 +74,62 @@ The transformation notebook validates:
 - fact-to-dimension relationships
 - Silver-to-Gold reconciliation
 
-Validation failures stop processing before invalid data reaches the analytical model.
-
-## Power BI Report
+## Power BI report
 
 The `CommerceSalesReport` report presents:
 
-- total sales
-- total orders
-- total quantity
-- customer count
-- top customers
-- top products
-- sales by product color
+1. Total Sales
+2. Total Orders
+3. Total Quantity
+4. Customer Count
+5. Top Customers
+6. Top Products
+7. Sales by Product Color
 
-![Power BI report key insights](docs/images/01_power-bi-report-key-insights.png)
+![Power BI report key insights](docs/images/01-power-bi-report-key-insights.png)
 
-## Business Questions
-
-The report supports analysis of the following questions:
-
-- Which customers generate the highest sales?
-- Which products contribute most to revenue and order volume?
-- How does sales performance change over time?
-- Which product colors and categories drive commercial performance?
-- Are sales records complete and consistent across the Silver and Gold layers?
-
-## Repository Structure
+## Repository structure
 
 ```text
-fabric-commerce-analytics/
-|-- AdventureWorksSource.SQLDatabase/
-|-- Commerce Analytics App.OrgApp/
-|-- CommerceLakehouse.Lakehouse/
-|-- CommerceSalesReport.Report/
-|-- CommerceSemanticModel.SemanticModel/
-|-- LoadAdventureWorks.CopyJob/
-|-- TransformAdventureWorks.Notebook/
-|-- docs/
-|   `-- images/
-|       |-- 01_power-bi-report-key-insights.png
-|       |-- 02_direct-lake-semantic-model.png
-|       `-- fabric-workspace-overview.png
-|-- LICENSE
-`-- README.md
+.
+├── AdventureWorksSource.SQLDatabase/
+├── Commerce Analytics App.OrgApp/
+├── CommerceLakehouse.Lakehouse/
+├── CommerceSalesReport.Report/
+├── CommerceSemanticModel.SemanticModel/
+├── LoadAdventureWorks.CopyJob/
+├── TransformAdventureWorks.Notebook/
+├── docs/
+│   └── images/
+│       ├── 01-power-bi-report-key-insights.png
+│       ├── 02-direct-lake-semantic-model.png
+│       └── 03-fabric-workspace-overview.png
+├── LICENSE
+└── README.md
 ```
 
-Fabric-generated folders contain the source definitions for the SQL database, Lakehouse, Copy Job, notebook, semantic model, report, and Org App.
+## Reproduce the project
 
-## Key Skills Demonstrated
+1. Create or restore the AdventureWorks source database in Microsoft Fabric.
+2. Run `LoadAdventureWorks` to ingest the source tables into the Bronze layer.
+3. Run `TransformAdventureWorks` to create and validate the Silver and Gold layers.
+4. Open `CommerceSemanticModel` and verify the Direct Lake relationships.
+5. Open `CommerceSalesReport` and verify the report visuals and measures.
+6. Publish the report through `Commerce Analytics App`.
 
-- Microsoft Fabric workspace design
-- medallion architecture implementation
-- PySpark data transformation
-- Delta table management
-- dimensional modeling and star-schema design
-- Direct Lake semantic modeling
-- DAX measure development
-- Power BI report development
-- automated data-quality validation
-- Git-based source control for Fabric artifacts
+## Validation results
+
+- Bronze, Silver, and Gold layers created successfully
+- data-quality checks implemented in the transformation notebook
+- fact-to-dimension relationships validated
+- Silver-to-Gold reconciliation implemented
+- Direct Lake semantic model connected
+- Power BI report created
+- Fabric workspace synchronized with GitHub
+
+## Skills demonstrated
+
+Microsoft Fabric, SQL Database, Copy Job, Lakehouse, medallion architecture, PySpark, Delta tables, dimensional modeling, Direct Lake, DAX, Power BI, data-quality validation, and Git source control.
 
 ## License
 
