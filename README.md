@@ -477,4 +477,4 @@ Return to the Fabric workspace and confirm:
 
 ## License
 
-This project is licensed under the terms specified in the LICENSE file.
+This project is licensed under the terms specified in the [LICENSE](LICENSE) file.
