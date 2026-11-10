@@ -23,26 +23,229 @@
 # CELL ********************
 
 from pyspark.sql import functions as F
+from pyspark.sql.types import (
+    DateType,
+    DecimalType,
+    IntegerType,
+    LongType,
+    StringType
+)
+
 
 # ============================================================
-# TransformAdventureWorks
-# Source: CommerceLakehouse, Bronze schema
-# Target: CommerceLakehouse, Silver schema
+# AdventureWorks Bronze-to-Silver-to-Gold Transformation
 #
-# Purpose:
-# - Read raw AdventureWorks data from the Bronze layer
-# - Join and standardize the source tables
-# - Validate data quality and row-level uniqueness
-# - Save the validated result as silver.sales
+# Source:
+# - bronze.customer
+# - bronze.product
+# - bronze.product_category
+# - bronze.sales_order_header
+# - bronze.sales_order_detail
 #
-# The script is idempotent:
-# running it again overwrites silver.sales instead of appending
-# duplicate records.
+# Targets:
+# - silver.sales
+# - gold.dim_customer
+# - gold.dim_product
+# - gold.dim_date
+# - gold.fact_sales
+# - gold.DAX
+#
+# The script is idempotent for sequential executions.
+# Target Delta tables are replaced during every successful run.
 # ============================================================
 
 
 # ------------------------------------------------------------
-# 1. Read source tables from the Bronze layer
+# 1. Utility functions
+# ------------------------------------------------------------
+
+def validate_required_columns(table_name, dataframe, required_columns):
+    actual_columns = set(dataframe.columns)
+
+    missing_columns = [
+        column_name
+        for column_name in required_columns
+        if column_name not in actual_columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            f"{table_name} is missing required columns: "
+            f"{missing_columns}"
+        )
+
+
+def validate_column_types(
+    table_name,
+    dataframe,
+    expected_column_types
+):
+    actual_types = {
+        field.name: field.dataType
+        for field in dataframe.schema.fields
+    }
+
+    type_errors = {}
+
+    for column_name, expected_type in expected_column_types.items():
+        actual_type = actual_types.get(column_name)
+
+        if actual_type is None:
+            type_errors[column_name] = {
+                "expected": str(expected_type),
+                "actual": "missing"
+            }
+        elif actual_type != expected_type:
+            type_errors[column_name] = {
+                "expected": str(expected_type),
+                "actual": str(actual_type)
+            }
+
+    if type_errors:
+        raise ValueError(
+            f"{table_name} contains unexpected column types: "
+            f"{type_errors}"
+        )
+
+
+def validate_non_null_columns(
+    dataset_name,
+    dataframe,
+    required_columns
+):
+    null_summary = dataframe.agg(
+        *[
+            F.sum(
+                F.when(
+                    F.col(column_name).isNull(),
+                    1
+                ).otherwise(0)
+            ).alias(column_name)
+            for column_name in required_columns
+        ]
+    ).first().asDict()
+
+    columns_with_nulls = {
+        column_name: null_count
+        for column_name, null_count in null_summary.items()
+        if null_count > 0
+    }
+
+    if columns_with_nulls:
+        raise ValueError(
+            f"{dataset_name} contains null values in required columns: "
+            f"{columns_with_nulls}"
+        )
+
+
+def validate_unique_key(
+    dataset_name,
+    dataframe,
+    key_column
+):
+    row_count = dataframe.count()
+
+    distinct_key_count = (
+        dataframe
+        .select(key_column)
+        .distinct()
+        .count()
+    )
+
+    null_key_count = (
+        dataframe
+        .filter(F.col(key_column).isNull())
+        .count()
+    )
+
+    if null_key_count > 0:
+        raise ValueError(
+            f"{dataset_name} contains {null_key_count} null values "
+            f"in key column {key_column}."
+        )
+
+    if row_count != distinct_key_count:
+        duplicated_keys = (
+            dataframe
+            .groupBy(key_column)
+            .count()
+            .filter(F.col("count") > 1)
+        )
+
+        display(duplicated_keys)
+
+        raise ValueError(
+            f"{dataset_name} contains duplicated keys: "
+            f"rows={row_count}, "
+            f"distinct_keys={distinct_key_count}"
+        )
+
+
+def validate_dimension_attribute_consistency(
+    dataset_name,
+    dataframe,
+    key_column,
+    attribute_columns
+):
+    distinct_versions = (
+        dataframe
+        .select(
+            key_column,
+            F.struct(
+                *[
+                    F.col(column_name)
+                    for column_name in attribute_columns
+                ]
+            ).alias("attribute_version")
+        )
+        .distinct()
+        .groupBy(key_column)
+        .agg(
+            F.count("*").alias("attribute_version_count")
+        )
+        .filter(F.col("attribute_version_count") > 1)
+    )
+
+    conflicting_key_count = distinct_versions.count()
+
+    if conflicting_key_count > 0:
+        display(distinct_versions)
+
+        raise ValueError(
+            f"{dataset_name} contains {conflicting_key_count} keys "
+            f"with conflicting attribute versions."
+        )
+
+
+def validate_persisted_table(
+    table_name,
+    expected_dataframe,
+    expected_columns
+):
+    persisted_dataframe = spark.table(table_name)
+
+    expected_count = expected_dataframe.count()
+    actual_count = persisted_dataframe.count()
+
+    if expected_count != actual_count:
+        raise ValueError(
+            f"Persisted row-count validation failed for {table_name}: "
+            f"expected={expected_count}, actual={actual_count}"
+        )
+
+    actual_columns = persisted_dataframe.columns
+
+    if actual_columns != expected_columns:
+        raise ValueError(
+            f"Persisted schema validation failed for {table_name}: "
+            f"expected={expected_columns}, actual={actual_columns}"
+        )
+
+    return persisted_dataframe
+
+
+# ------------------------------------------------------------
+# 2. Read Bronze source tables
 # ------------------------------------------------------------
 
 customers = spark.table("bronze.customer")
@@ -53,10 +256,10 @@ order_details = spark.table("bronze.sales_order_detail")
 
 
 # ------------------------------------------------------------
-# 2. Validate that required source columns are available
+# 3. Validate Bronze source schemas
 # ------------------------------------------------------------
 
-required_columns = {
+required_source_columns = {
     "bronze.customer": [
         "CustomerID",
         "FirstName",
@@ -67,7 +270,8 @@ required_columns = {
         "ProductID",
         "Name",
         "ProductNumber",
-        "Color"
+        "Color",
+        "ProductCategoryID"
     ],
     "bronze.product_category": [
         "ProductCategoryID",
@@ -99,32 +303,61 @@ source_dataframes = {
     "bronze.sales_order_detail": order_details
 }
 
-for table_name, expected_columns in required_columns.items():
-    actual_columns = set(source_dataframes[table_name].columns)
+for table_name, required_columns in required_source_columns.items():
+    validate_required_columns(
+        table_name,
+        source_dataframes[table_name],
+        required_columns
+    )
 
-    missing_columns = [
-        column_name
-        for column_name in expected_columns
-        if column_name not in actual_columns
-    ]
-
-    if missing_columns:
-        raise ValueError(
-            f"Source table {table_name} is missing required columns: "
-            f"{missing_columns}"
-        )
-
-print("Source schema validation passed.")
+print("Bronze source-schema validation passed.")
 
 
 # ------------------------------------------------------------
-# 3. Transform and combine sales data
+# 4. Validate Bronze business keys
+# ------------------------------------------------------------
+
+validate_unique_key(
+    "bronze.customer",
+    customers,
+    "CustomerID"
+)
+
+validate_unique_key(
+    "bronze.product",
+    products,
+    "ProductID"
+)
+
+validate_unique_key(
+    "bronze.product_category",
+    categories,
+    "ProductCategoryID"
+)
+
+validate_unique_key(
+    "bronze.sales_order_header",
+    orders,
+    "SalesOrderID"
+)
+
+validate_unique_key(
+    "bronze.sales_order_detail",
+    order_details,
+    "SalesOrderDetailID"
+)
+
+print("Bronze business-key validation passed.")
+
+
+# ------------------------------------------------------------
+# 5. Build the Silver sales dataset
 #
 # Grain:
 # One row represents one sales order detail line.
 #
 # Business key:
-# sales_order_detail_id uniquely identifies each row.
+# sales_order_detail_id
 # ------------------------------------------------------------
 
 sales = (
@@ -137,6 +370,12 @@ sales = (
     .join(
         products.alias("p"),
         F.col("d.ProductID") == F.col("p.ProductID"),
+        "left"
+    )
+    .join(
+        categories.alias("pc"),
+        F.col("p.ProductCategoryID")
+        == F.col("pc.ProductCategoryID"),
         "left"
     )
     .join(
@@ -179,6 +418,7 @@ sales = (
         ).alias("customer_name"),
 
         F.col("c.CompanyName")
+        .cast("string")
         .alias("company_name"),
 
         F.col("d.ProductID")
@@ -186,13 +426,24 @@ sales = (
         .alias("product_id"),
 
         F.col("p.Name")
+        .cast("string")
         .alias("product_name"),
 
         F.col("p.ProductNumber")
+        .cast("string")
         .alias("product_number"),
 
         F.col("p.Color")
+        .cast("string")
         .alias("product_color"),
+
+        F.col("p.ProductCategoryID")
+        .cast("long")
+        .alias("product_category_id"),
+
+        F.col("pc.Name")
+        .cast("string")
+        .alias("product_category_name"),
 
         F.col("d.OrderQty")
         .cast("integer")
@@ -221,55 +472,31 @@ sales = (
 
 
 # ------------------------------------------------------------
-# 4. Validate the transformed DataFrame before writing
+# 6. Validate the Silver row count and grain
 # ------------------------------------------------------------
 
-source_count = order_details.count()
-transformed_count = sales.count()
+source_detail_count = order_details.count()
+silver_source_count = sales.count()
 
-if source_count != transformed_count:
+if source_detail_count != silver_source_count:
     raise ValueError(
-        "Row-count validation failed before writing: "
-        f"source={source_count}, transformed={transformed_count}"
+        "Silver row-count validation failed: "
+        f"bronze.sales_order_detail={source_detail_count}, "
+        f"transformed={silver_source_count}"
     )
 
-unique_detail_id_count = (
-    sales
-    .select("sales_order_detail_id")
-    .distinct()
-    .count()
+validate_unique_key(
+    "silver.sales candidate",
+    sales,
+    "sales_order_detail_id"
 )
 
-if transformed_count != unique_detail_id_count:
-    raise ValueError(
-        "Uniqueness validation failed for sales_order_detail_id: "
-        f"rows={transformed_count}, "
-        f"unique_ids={unique_detail_id_count}"
-    )
-
-duplicate_detail_ids = (
-    sales
-    .groupBy("sales_order_detail_id")
-    .count()
-    .filter(F.col("count") > 1)
-)
-
-duplicate_detail_id_count = duplicate_detail_ids.count()
-
-if duplicate_detail_id_count > 0:
-    display(duplicate_detail_ids)
-
-    raise ValueError(
-        "Duplicate validation failed: "
-        f"{duplicate_detail_id_count} duplicated identifiers found."
-    )
-
 
 # ------------------------------------------------------------
-# 5. Validate required non-null values
+# 7. Validate required Silver values
 # ------------------------------------------------------------
 
-required_target_columns = [
+required_silver_columns = [
     "sales_order_id",
     "sales_order_detail_id",
     "order_date",
@@ -277,43 +504,24 @@ required_target_columns = [
     "customer_name",
     "product_id",
     "product_name",
+    "product_number",
+    "product_category_id",
+    "product_category_name",
     "order_quantity",
     "unit_price",
     "unit_price_discount",
     "line_total"
 ]
 
-null_summary = sales.agg(
-    *[
-        F.sum(
-            F.when(
-                F.col(column_name).isNull(),
-                1
-            ).otherwise(0)
-        ).alias(column_name)
-        for column_name in required_target_columns
-    ]
+validate_non_null_columns(
+    "silver.sales candidate",
+    sales,
+    required_silver_columns
 )
-
-null_results = null_summary.first().asDict()
-
-columns_with_nulls = {
-    column_name: null_count
-    for column_name, null_count in null_results.items()
-    if null_count > 0
-}
-
-if columns_with_nulls:
-    display(null_summary)
-
-    raise ValueError(
-        "Null-value validation failed: "
-        f"{columns_with_nulls}"
-    )
 
 
 # ------------------------------------------------------------
-# 6. Validate numeric and business rules
+# 8. Validate Silver business rules
 # ------------------------------------------------------------
 
 business_rule_summary = (
@@ -346,7 +554,21 @@ business_rule_summary = (
                 F.col("line_total") < 0,
                 1
             ).otherwise(0)
-        ).alias("invalid_line_total")
+        ).alias("invalid_line_total"),
+
+        F.sum(
+            F.when(
+                F.col("due_date") < F.col("order_date"),
+                1
+            ).otherwise(0)
+        ).alias("invalid_due_date"),
+
+        F.sum(
+            F.when(
+                F.col("ship_date") < F.col("order_date"),
+                1
+            ).otherwise(0)
+        ).alias("invalid_ship_date")
     )
     .first()
     .asDict()
@@ -360,19 +582,16 @@ detected_business_rule_errors = {
 
 if detected_business_rule_errors:
     raise ValueError(
-        "Business-rule validation failed: "
+        "Silver business-rule validation failed: "
         f"{detected_business_rule_errors}"
     )
 
 
 # ------------------------------------------------------------
-# 7. Recalculate and validate line_total
-#
-# Formula:
-# quantity * unit price * (1 - discount)
+# 9. Validate Silver line-total calculations
 # ------------------------------------------------------------
 
-calculation_validation = (
+incorrect_calculations = (
     sales
     .withColumn(
         "recalculated_line_total",
@@ -392,12 +611,9 @@ calculation_validation = (
             - F.col("recalculated_line_total")
         )
     )
-)
-
-incorrect_calculations = (
-    calculation_validation
     .filter(
-        F.col("calculation_difference") > F.lit(0.01)
+        F.col("calculation_difference")
+        > F.lit(0.01)
     )
 )
 
@@ -417,16 +633,16 @@ if incorrect_calculation_count > 0:
     )
 
     raise ValueError(
-        "Line-total calculation validation failed: "
+        "Silver line-total calculation validation failed: "
         f"{incorrect_calculation_count} incorrect rows found."
     )
 
 
 # ------------------------------------------------------------
-# 8. Validate the transformed schema
+# 10. Validate the Silver schema
 # ------------------------------------------------------------
 
-expected_target_columns = [
+expected_silver_columns = [
     "sales_order_id",
     "sales_order_detail_id",
     "order_date",
@@ -440,47 +656,55 @@ expected_target_columns = [
     "product_name",
     "product_number",
     "product_color",
+    "product_category_id",
+    "product_category_name",
     "order_quantity",
     "unit_price",
     "unit_price_discount",
     "line_total"
 ]
 
-actual_target_columns = sales.columns
-
-missing_target_columns = [
-    column_name
-    for column_name in expected_target_columns
-    if column_name not in actual_target_columns
-]
-
-unexpected_target_columns = [
-    column_name
-    for column_name in actual_target_columns
-    if column_name not in expected_target_columns
-]
-
-if missing_target_columns or unexpected_target_columns:
+if sales.columns != expected_silver_columns:
     raise ValueError(
-        "Target-schema validation failed: "
-        f"missing={missing_target_columns}, "
-        f"unexpected={unexpected_target_columns}"
+        "Silver column-order validation failed: "
+        f"expected={expected_silver_columns}, "
+        f"actual={sales.columns}"
     )
+
+expected_silver_types = {
+    "sales_order_id": LongType(),
+    "sales_order_detail_id": LongType(),
+    "order_date": DateType(),
+    "due_date": DateType(),
+    "ship_date": DateType(),
+    "order_status": IntegerType(),
+    "customer_id": LongType(),
+    "customer_name": StringType(),
+    "company_name": StringType(),
+    "product_id": LongType(),
+    "product_name": StringType(),
+    "product_number": StringType(),
+    "product_color": StringType(),
+    "product_category_id": LongType(),
+    "product_category_name": StringType(),
+    "order_quantity": IntegerType(),
+    "unit_price": DecimalType(18, 4),
+    "unit_price_discount": DecimalType(18, 4),
+    "line_total": DecimalType(18, 2)
+}
+
+validate_column_types(
+    "silver.sales candidate",
+    sales,
+    expected_silver_types
+)
 
 
 # ------------------------------------------------------------
-# 9. Create the Silver schema
+# 11. Write and validate Silver
 # ------------------------------------------------------------
 
 spark.sql("CREATE SCHEMA IF NOT EXISTS silver")
-
-
-# ------------------------------------------------------------
-# 10. Write the validated dataset to the Silver layer
-#
-# Overwrite mode makes repeated sequential executions safe.
-# Existing silver.sales data is replaced, not duplicated.
-# ------------------------------------------------------------
 
 (
     sales.write
@@ -490,209 +714,84 @@ spark.sql("CREATE SCHEMA IF NOT EXISTS silver")
     .saveAsTable("silver.sales")
 )
 
-
-# ------------------------------------------------------------
-# 11. Validate the persisted Silver table
-# ------------------------------------------------------------
-
-silver_sales = spark.table("silver.sales")
-target_count = silver_sales.count()
-
-if source_count != target_count:
-    raise ValueError(
-        "Persisted row-count validation failed: "
-        f"source={source_count}, target={target_count}"
-    )
-
-persisted_columns = silver_sales.columns
-
-if persisted_columns != expected_target_columns:
-    raise ValueError(
-        "Persisted-schema validation failed: "
-        f"expected={expected_target_columns}, "
-        f"actual={persisted_columns}"
-    )
-
-
-# ------------------------------------------------------------
-# 12. Create the final execution summary
-# ------------------------------------------------------------
-
-execution_summary = (
-    silver_sales
-    .agg(
-        F.count("*")
-        .alias("sales_lines"),
-
-        F.countDistinct("sales_order_id")
-        .alias("orders"),
-
-        F.countDistinct("sales_order_detail_id")
-        .alias("unique_sales_lines"),
-
-        F.countDistinct("customer_id")
-        .alias("customers"),
-
-        F.countDistinct("product_id")
-        .alias("products"),
-
-        F.round(
-            F.sum("line_total"),
-            2
-        ).alias("total_sales"),
-
-        F.round(
-            F.avg("line_total"),
-            2
-        ).alias("average_sales_line_value"),
-
-        F.min("order_date")
-        .alias("first_order_date"),
-
-        F.max("order_date")
-        .alias("last_order_date")
-    )
+silver_sales = validate_persisted_table(
+    "silver.sales",
+    sales,
+    expected_silver_columns
 )
 
-
-# ------------------------------------------------------------
-# 13. Display the final validation results
-# ------------------------------------------------------------
-
-print("")
-print("============================================================")
-print("TransformAdventureWorks completed successfully.")
-print("============================================================")
-print(f"Source rows: {source_count}")
-print(f"Silver rows: {target_count}")
-print(f"Unique sales detail IDs: {unique_detail_id_count}")
-print(f"Duplicate detail IDs: {duplicate_detail_id_count}")
-print("Invalid business-rule rows: 0")
-print("Incorrect line-total calculations: 0")
-print("Target table: silver.sales")
-print("============================================================")
-
-display(execution_summary)
-
-display(
-    silver_sales
-    .orderBy(
-        "sales_order_id",
-        "sales_order_detail_id"
-    )
-    .limit(20)
+validate_column_types(
+    "silver.sales",
+    silver_sales,
+    expected_silver_types
 )
 
-# METADATA ********************
-
-# META {
-# META   "language": "python",
-# META   "language_group": "synapse_pyspark"
-# META }
-
-# CELL ********************
-
-from pyspark.sql import functions as F
-
-# ============================================================
-# BuildAdventureWorksStarSchema
-# Source: CommerceLakehouse, Silver schema
-# Targets:
-# - gold.dim_customer
-# - gold.dim_product
-# - gold.dim_date
-# - gold.fact_sales
-#
-# Purpose:
-# Build and validate a reusable analytical star schema.
-#
-# The script is idempotent:
-# target tables are overwritten during each execution.
-# ============================================================
+print("Silver layer completed successfully.")
 
 
 # ------------------------------------------------------------
-# 1. Read and validate the Silver source table
+# 12. Validate dimension attribute consistency
 # ------------------------------------------------------------
 
-silver_sales = spark.table("silver.sales")
-
-required_source_columns = [
-    "sales_order_id",
-    "sales_order_detail_id",
-    "order_date",
-    "due_date",
-    "ship_date",
-    "order_status",
+validate_dimension_attribute_consistency(
+    "Customer dimension source",
+    silver_sales,
     "customer_id",
-    "customer_name",
-    "company_name",
+    [
+        "customer_name",
+        "company_name"
+    ]
+)
+
+validate_dimension_attribute_consistency(
+    "Product dimension source",
+    silver_sales,
     "product_id",
-    "product_name",
-    "product_number",
-    "product_color",
-    "order_quantity",
-    "unit_price",
-    "unit_price_discount",
-    "line_total"
-]
-
-missing_source_columns = [
-    column_name
-    for column_name in required_source_columns
-    if column_name not in silver_sales.columns
-]
-
-if missing_source_columns:
-    raise ValueError(
-        "silver.sales is missing required columns: "
-        f"{missing_source_columns}"
-    )
-
-print("Silver source-table validation passed.")
+    [
+        "product_name",
+        "product_number",
+        "product_color",
+        "product_category_id",
+        "product_category_name"
+    ]
+)
 
 
 # ------------------------------------------------------------
-# 2. Create the customer dimension
-#
-# Grain:
-# One row represents one customer.
+# 13. Build the customer dimension
 # ------------------------------------------------------------
 
 dim_customer = (
     silver_sales
     .select(
         F.col("customer_id").cast("long"),
-        F.col("customer_name"),
-        F.col("company_name")
+        F.col("customer_name").cast("string"),
+        F.col("company_name").cast("string")
     )
     .dropDuplicates(["customer_id"])
 )
 
 
 # ------------------------------------------------------------
-# 3. Create the product dimension
-#
-# Grain:
-# One row represents one product.
+# 14. Build the product dimension
 # ------------------------------------------------------------
 
 dim_product = (
     silver_sales
     .select(
         F.col("product_id").cast("long"),
-        F.col("product_name"),
-        F.col("product_number"),
-        F.col("product_color")
+        F.col("product_name").cast("string"),
+        F.col("product_number").cast("string"),
+        F.col("product_color").cast("string"),
+        F.col("product_category_id").cast("long"),
+        F.col("product_category_name").cast("string")
     )
     .dropDuplicates(["product_id"])
 )
 
 
 # ------------------------------------------------------------
-# 4. Determine the required date range
-#
-# The date dimension covers order, due, and ship dates.
+# 15. Build the date dimension
 # ------------------------------------------------------------
 
 date_boundaries = (
@@ -731,15 +830,6 @@ if minimum_date is None or maximum_date is None:
         "The date dimension cannot be created because "
         "the Silver date range is empty."
     )
-
-print(f"Date dimension range: {minimum_date} to {maximum_date}")
-
-
-# ------------------------------------------------------------
-# 5. Create the date dimension
-#
-# date_key uses the YYYYMMDD integer format.
-# ------------------------------------------------------------
 
 dim_date = (
     spark.range(1)
@@ -803,10 +893,7 @@ dim_date = (
 
 
 # ------------------------------------------------------------
-# 6. Create the sales fact table
-#
-# Grain:
-# One row represents one sales order detail line.
+# 16. Build the sales fact table
 # ------------------------------------------------------------
 
 fact_sales = (
@@ -867,310 +954,168 @@ fact_sales = (
 
 
 # ------------------------------------------------------------
-# 7. Validate dimension keys
+# 17. Validate Gold grains and relationships
 # ------------------------------------------------------------
 
-dimension_validations = [
-    ("dim_customer", dim_customer, "customer_id"),
-    ("dim_product", dim_product, "product_id"),
-    ("dim_date", dim_date, "date_key")
-]
-
-for dimension_name, dataframe, key_column in dimension_validations:
-    row_count = dataframe.count()
-
-    distinct_key_count = (
-        dataframe
-        .select(key_column)
-        .distinct()
-        .count()
-    )
-
-    null_key_count = (
-        dataframe
-        .filter(F.col(key_column).isNull())
-        .count()
-    )
-
-    if row_count != distinct_key_count:
-        raise ValueError(
-            f"{dimension_name} contains duplicate keys: "
-            f"rows={row_count}, "
-            f"distinct_keys={distinct_key_count}"
-        )
-
-    if null_key_count > 0:
-        raise ValueError(
-            f"{dimension_name} contains "
-            f"{null_key_count} null keys."
-        )
-
-    print(
-        f"{dimension_name} validation passed: "
-        f"{row_count} unique rows."
-    )
-
-
-# ------------------------------------------------------------
-# 8. Validate the fact-table grain
-# ------------------------------------------------------------
-
-fact_row_count = fact_sales.count()
-
-unique_fact_key_count = (
-    fact_sales
-    .select("sales_order_detail_id")
-    .distinct()
-    .count()
+validate_unique_key(
+    "gold.dim_customer candidate",
+    dim_customer,
+    "customer_id"
 )
 
-silver_row_count = silver_sales.count()
+validate_unique_key(
+    "gold.dim_product candidate",
+    dim_product,
+    "product_id"
+)
 
-if fact_row_count != unique_fact_key_count:
-    raise ValueError(
-        "fact_sales grain validation failed: "
-        f"rows={fact_row_count}, "
-        f"unique_keys={unique_fact_key_count}"
-    )
+validate_unique_key(
+    "gold.dim_date candidate",
+    dim_date,
+    "date_key"
+)
 
-if fact_row_count != silver_row_count:
+validate_unique_key(
+    "gold.fact_sales candidate",
+    fact_sales,
+    "sales_order_detail_id"
+)
+
+if fact_sales.count() != silver_sales.count():
     raise ValueError(
         "Fact-table row-count validation failed: "
-        f"silver.sales={silver_row_count}, "
-        f"fact_sales={fact_row_count}"
+        f"silver.sales={silver_sales.count()}, "
+        f"gold.fact_sales candidate={fact_sales.count()}"
     )
 
-print(
-    "Fact-table grain validation passed: "
-    f"{fact_row_count} unique sales lines."
-)
+relationship_validations = [
+    (
+        "customer",
+        fact_sales,
+        "customer_id",
+        dim_customer,
+        "customer_id"
+    ),
+    (
+        "product",
+        fact_sales,
+        "product_id",
+        dim_product,
+        "product_id"
+    ),
+    (
+        "order date",
+        fact_sales,
+        "order_date_key",
+        dim_date,
+        "date_key"
+    )
+]
+
+for (
+    relationship_name,
+    fact_dataframe,
+    fact_key,
+    dimension_dataframe,
+    dimension_key
+) in relationship_validations:
+    missing_relationship_count = (
+        fact_dataframe.alias("f")
+        .join(
+            dimension_dataframe.alias("d"),
+            F.col(f"f.{fact_key}")
+            == F.col(f"d.{dimension_key}"),
+            "left_anti"
+        )
+        .count()
+    )
+
+    if missing_relationship_count > 0:
+        raise ValueError(
+            f"{relationship_name.title()} relationship validation "
+            f"failed: {missing_relationship_count} unmatched fact rows."
+        )
+
+optional_date_relationships = [
+    "due_date_key",
+    "ship_date_key"
+]
+
+for fact_date_key in optional_date_relationships:
+    missing_relationship_count = (
+        fact_sales
+        .filter(F.col(fact_date_key).isNotNull())
+        .alias("f")
+        .join(
+            dim_date.alias("d"),
+            F.col(f"f.{fact_date_key}")
+            == F.col("d.date_key"),
+            "left_anti"
+        )
+        .count()
+    )
+
+    if missing_relationship_count > 0:
+        raise ValueError(
+            f"{fact_date_key} relationship validation failed: "
+            f"{missing_relationship_count} unmatched fact rows."
+        )
 
 
 # ------------------------------------------------------------
-# 9. Validate customer relationships
-# ------------------------------------------------------------
-
-missing_customer_relationships = (
-    fact_sales.alias("f")
-    .join(
-        dim_customer.alias("c"),
-        F.col("f.customer_id") == F.col("c.customer_id"),
-        "left_anti"
-    )
-    .count()
-)
-
-if missing_customer_relationships > 0:
-    raise ValueError(
-        "Customer relationship validation failed: "
-        f"{missing_customer_relationships} fact rows "
-        "do not have a matching customer."
-    )
-
-print("Customer relationship validation passed.")
-
-
-# ------------------------------------------------------------
-# 10. Validate product relationships
-# ------------------------------------------------------------
-
-missing_product_relationships = (
-    fact_sales.alias("f")
-    .join(
-        dim_product.alias("p"),
-        F.col("f.product_id") == F.col("p.product_id"),
-        "left_anti"
-    )
-    .count()
-)
-
-if missing_product_relationships > 0:
-    raise ValueError(
-        "Product relationship validation failed: "
-        f"{missing_product_relationships} fact rows "
-        "do not have a matching product."
-    )
-
-print("Product relationship validation passed.")
-
-
-# ------------------------------------------------------------
-# 11. Validate order-date relationships
-# ------------------------------------------------------------
-
-missing_order_date_relationships = (
-    fact_sales.alias("f")
-    .join(
-        dim_date.alias("d"),
-        F.col("f.order_date_key") == F.col("d.date_key"),
-        "left_anti"
-    )
-    .count()
-)
-
-if missing_order_date_relationships > 0:
-    raise ValueError(
-        "Order-date relationship validation failed: "
-        f"{missing_order_date_relationships} fact rows "
-        "do not have a matching date."
-    )
-
-print("Order-date relationship validation passed.")
-
-
-# ------------------------------------------------------------
-# 12. Validate due-date relationships
-# ------------------------------------------------------------
-
-missing_due_date_relationships = (
-    fact_sales
-    .filter(F.col("due_date_key").isNotNull())
-    .alias("f")
-    .join(
-        dim_date.alias("d"),
-        F.col("f.due_date_key") == F.col("d.date_key"),
-        "left_anti"
-    )
-    .count()
-)
-
-if missing_due_date_relationships > 0:
-    raise ValueError(
-        "Due-date relationship validation failed: "
-        f"{missing_due_date_relationships} fact rows "
-        "do not have a matching date."
-    )
-
-print("Due-date relationship validation passed.")
-
-
-# ------------------------------------------------------------
-# 13. Validate ship-date relationships
-# ------------------------------------------------------------
-
-missing_ship_date_relationships = (
-    fact_sales
-    .filter(F.col("ship_date_key").isNotNull())
-    .alias("f")
-    .join(
-        dim_date.alias("d"),
-        F.col("f.ship_date_key") == F.col("d.date_key"),
-        "left_anti"
-    )
-    .count()
-)
-
-if missing_ship_date_relationships > 0:
-    raise ValueError(
-        "Ship-date relationship validation failed: "
-        f"{missing_ship_date_relationships} fact rows "
-        "do not have a matching date."
-    )
-
-print("Ship-date relationship validation passed.")
-
-
-# ------------------------------------------------------------
-# 14. Create the Gold schema if required
+# 18. Write Gold tables
 # ------------------------------------------------------------
 
 spark.sql("CREATE SCHEMA IF NOT EXISTS gold")
 
-
-# ------------------------------------------------------------
-# 15. Write the star-schema tables to the Gold layer
-# ------------------------------------------------------------
-
-(
-    dim_customer.write
-    .format("delta")
-    .mode("overwrite")
-    .option("overwriteSchema", "true")
-    .saveAsTable("gold.dim_customer")
-)
-
-(
-    dim_product.write
-    .format("delta")
-    .mode("overwrite")
-    .option("overwriteSchema", "true")
-    .saveAsTable("gold.dim_product")
-)
-
-(
-    dim_date.write
-    .format("delta")
-    .mode("overwrite")
-    .option("overwriteSchema", "true")
-    .saveAsTable("gold.dim_date")
-)
-
-(
-    fact_sales.write
-    .format("delta")
-    .mode("overwrite")
-    .option("overwriteSchema", "true")
-    .saveAsTable("gold.fact_sales")
-)
-
-
-# ------------------------------------------------------------
-# 16. Validate persisted Gold tables
-# ------------------------------------------------------------
-
-persisted_customer_count = (
-    spark.table("gold.dim_customer").count()
-)
-
-persisted_product_count = (
-    spark.table("gold.dim_product").count()
-)
-
-persisted_date_count = (
-    spark.table("gold.dim_date").count()
-)
-
-persisted_fact_count = (
-    spark.table("gold.fact_sales").count()
-)
-
-persisted_validations = {
-    "gold.dim_customer": (
-        dim_customer.count(),
-        persisted_customer_count
-    ),
-    "gold.dim_product": (
-        dim_product.count(),
-        persisted_product_count
-    ),
-    "gold.dim_date": (
-        dim_date.count(),
-        persisted_date_count
-    ),
-    "gold.fact_sales": (
-        fact_sales.count(),
-        persisted_fact_count
-    )
+gold_tables = {
+    "gold.dim_customer": dim_customer,
+    "gold.dim_product": dim_product,
+    "gold.dim_date": dim_date,
+    "gold.fact_sales": fact_sales
 }
 
-for table_name, counts in persisted_validations.items():
-    expected_count, actual_count = counts
-
-    if expected_count != actual_count:
-        raise ValueError(
-            f"Persisted-table validation failed for "
-            f"{table_name}: expected={expected_count}, "
-            f"actual={actual_count}"
-        )
-
-    print(
-        f"{table_name} persisted successfully: "
-        f"{actual_count} rows."
+for table_name, dataframe in gold_tables.items():
+    (
+        dataframe.write
+        .format("delta")
+        .mode("overwrite")
+        .option("overwriteSchema", "true")
+        .saveAsTable(table_name)
     )
 
 
 # ------------------------------------------------------------
-# 17. Reconcile Silver and Gold business totals
+# 19. Validate persisted Gold tables
+# ------------------------------------------------------------
+
+persisted_dim_customer = validate_persisted_table(
+    "gold.dim_customer",
+    dim_customer,
+    dim_customer.columns
+)
+
+persisted_dim_product = validate_persisted_table(
+    "gold.dim_product",
+    dim_product,
+    dim_product.columns
+)
+
+persisted_dim_date = validate_persisted_table(
+    "gold.dim_date",
+    dim_date,
+    dim_date.columns
+)
+
+persisted_fact_sales = validate_persisted_table(
+    "gold.fact_sales",
+    fact_sales,
+    fact_sales.columns
+)
+
+
+# ------------------------------------------------------------
+# 20. Reconcile Silver and Gold totals
 # ------------------------------------------------------------
 
 silver_totals = (
@@ -1186,7 +1131,7 @@ silver_totals = (
 )
 
 gold_totals = (
-    spark.table("gold.fact_sales")
+    persisted_fact_sales
     .agg(
         F.sum("order_quantity").alias("total_quantity"),
         F.round(
@@ -1199,80 +1144,26 @@ gold_totals = (
 
 if silver_totals["total_quantity"] != gold_totals["total_quantity"]:
     raise ValueError(
-        "Quantity reconciliation failed: "
+        "Silver-to-Gold quantity reconciliation failed: "
         f"silver={silver_totals['total_quantity']}, "
         f"gold={gold_totals['total_quantity']}"
     )
 
 if silver_totals["total_sales"] != gold_totals["total_sales"]:
     raise ValueError(
-        "Sales reconciliation failed: "
+        "Silver-to-Gold sales reconciliation failed: "
         f"silver={silver_totals['total_sales']}, "
         f"gold={gold_totals['total_sales']}"
     )
 
-print("Silver-to-Gold business-total reconciliation passed.")
-
 
 # ------------------------------------------------------------
-# 18. Display the final execution summary
+# 21. Create the Power BI measure container
 # ------------------------------------------------------------
-
-summary = spark.createDataFrame(
-    [
-        ("gold.dim_customer", persisted_customer_count),
-        ("gold.dim_product", persisted_product_count),
-        ("gold.dim_date", persisted_date_count),
-        ("gold.fact_sales", persisted_fact_count)
-    ],
-    [
-        "table_name",
-        "row_count"
-    ]
-)
-
-print("")
-print("============================================================")
-print("AdventureWorks star schema completed successfully.")
-print("============================================================")
-print("Source table: silver.sales")
-print(f"Customers: {persisted_customer_count}")
-print(f"Products: {persisted_product_count}")
-print(f"Dates: {persisted_date_count}")
-print(f"Sales fact rows: {persisted_fact_count}")
-print(f"Total quantity: {gold_totals['total_quantity']}")
-print(f"Total sales: {gold_totals['total_sales']}")
-print("============================================================")
-
-display(summary)
-
-display(
-    spark.table("gold.fact_sales")
-    .orderBy(
-        "sales_order_id",
-        "sales_order_detail_id"
-    )
-    .limit(20)
-)
-
-# METADATA ********************
-
-# META {
-# META   "language": "python",
-# META   "language_group": "synapse_pyspark"
-# META }
-
-# CELL ********************
-
-from pyspark.sql.types import StructType, StructField, StringType
-
-schema = StructType([
-    StructField("measure_group", StringType(), False)
-])
 
 dax_table = spark.createDataFrame(
     [("DAX Measures",)],
-    schema
+    ["measure_group"]
 )
 
 (
@@ -1283,25 +1174,136 @@ dax_table = spark.createDataFrame(
     .saveAsTable("gold.DAX")
 )
 
-print("gold.DAX created successfully.")
+persisted_dax_count = spark.table("gold.DAX").count()
 
-# METADATA ********************
+if persisted_dax_count != 1:
+    raise ValueError(
+        "gold.DAX validation failed: "
+        f"expected=1, actual={persisted_dax_count}"
+    )
 
-# META {
-# META   "language": "python",
-# META   "language_group": "synapse_pyspark"
-# META }
 
-# CELL ********************
+# ------------------------------------------------------------
+# 22. Create the execution summary
+# ------------------------------------------------------------
 
-spark.sql("""
-    SELECT
-        OrderDate,
-        COUNT(*) AS order_count
-    FROM bronze.sales_order_header
-    GROUP BY OrderDate
-    ORDER BY OrderDate
-""").show(truncate=False)
+execution_summary = (
+    silver_sales
+    .agg(
+        F.count("*").alias("sales_lines"),
+
+        F.countDistinct("sales_order_id")
+        .alias("orders"),
+
+        F.countDistinct("sales_order_detail_id")
+        .alias("unique_sales_lines"),
+
+        F.countDistinct("customer_id")
+        .alias("customers"),
+
+        F.countDistinct("product_id")
+        .alias("products"),
+
+        F.countDistinct("product_category_id")
+        .alias("product_categories"),
+
+        F.sum("order_quantity")
+        .alias("total_quantity"),
+
+        F.round(
+            F.sum("line_total"),
+            2
+        ).alias("total_sales"),
+
+        F.round(
+            F.avg("line_total"),
+            2
+        ).alias("average_sales_line_value"),
+
+        F.min("order_date")
+        .alias("first_order_date"),
+
+        F.max("order_date")
+        .alias("last_order_date")
+    )
+)
+
+table_summary = spark.createDataFrame(
+    [
+        (
+            "silver.sales",
+            silver_sales.count()
+        ),
+        (
+            "gold.dim_customer",
+            persisted_dim_customer.count()
+        ),
+        (
+            "gold.dim_product",
+            persisted_dim_product.count()
+        ),
+        (
+            "gold.dim_date",
+            persisted_dim_date.count()
+        ),
+        (
+            "gold.fact_sales",
+            persisted_fact_sales.count()
+        ),
+        (
+            "gold.DAX",
+            persisted_dax_count
+        )
+    ],
+    [
+        "table_name",
+        "row_count"
+    ]
+)
+
+
+# ------------------------------------------------------------
+# 23. Display final validation results
+# ------------------------------------------------------------
+
+print("")
+print("============================================================")
+print("AdventureWorks transformation completed successfully.")
+print("============================================================")
+print(f"Bronze sales detail rows: {source_detail_count}")
+print(f"Silver sales rows: {silver_sales.count()}")
+print(f"Gold fact rows: {persisted_fact_sales.count()}")
+print(f"Customers: {persisted_dim_customer.count()}")
+print(f"Products: {persisted_dim_product.count()}")
+print(
+    "Product categories: "
+    f"{persisted_dim_product.select('product_category_id').distinct().count()}"
+)
+print(f"Dates: {persisted_dim_date.count()}")
+print(f"Total quantity: {gold_totals['total_quantity']}")
+print(f"Total sales: {gold_totals['total_sales']}")
+print("Duplicate sales detail IDs: 0")
+print("Invalid required null values: 0")
+print("Invalid business-rule rows: 0")
+print("Incorrect line-total calculations: 0")
+print("Silver-to-Gold reconciliation: passed")
+print("============================================================")
+
+display(execution_summary)
+
+display(
+    table_summary
+    .orderBy("table_name")
+)
+
+display(
+    persisted_fact_sales
+    .orderBy(
+        "sales_order_id",
+        "sales_order_detail_id"
+    )
+    .limit(20)
+)
 
 # METADATA ********************
 
