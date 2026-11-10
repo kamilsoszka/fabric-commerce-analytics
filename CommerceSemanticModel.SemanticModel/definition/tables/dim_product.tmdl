@@ -40,6 +40,25 @@ table dim_product
 
 		annotation SummarizationSetBy = Automatic
 
+	column product_category_id
+		dataType: int64
+		formatString: 0
+		lineageTag: b5fce31d-191d-4dc7-bea1-e1c4cb024957
+		sourceLineageTag: product_category_id
+		summarizeBy: none
+		sourceColumn: product_category_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_category_name
+		dataType: string
+		lineageTag: dbdcb340-3f9d-4480-8a30-dbb1276260e4
+		sourceLineageTag: product_category_name
+		summarizeBy: none
+		sourceColumn: product_category_name
+
+		annotation SummarizationSetBy = Automatic
+
 	partition dim_product = entity
 		mode: directLake
 		source
