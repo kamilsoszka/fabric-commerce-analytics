@@ -2,15 +2,15 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "6a475554ab1253309743",
   "position": {
-    "x": 0,
-    "y": 300,
+    "x": 427.79789444521396,
+    "y": 416,
     "z": 2,
-    "height": 300,
-    "width": 400,
+    "height": 300.008311400471,
+    "width": 425,
     "tabOrder": 2
   },
   "visual": {
-    "visualType": "clusteredColumnChart",
+    "visualType": "donutChart",
     "query": {
       "queryState": {
         "Category": {
@@ -101,6 +101,13 @@
                   "Value": "true"
                 }
               }
+            },
+            "labelStyle": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Category, data value, percent of total'"
+                }
+              }
             }
           }
         }
@@ -118,26 +125,26 @@
           }
         }
       ],
-      "valueAxis": [
+      "slices": [
         {
           "properties": {
-            "show": {
+            "innerRadiusRatio": {
               "expr": {
                 "Literal": {
-                  "Value": "false"
+                  "Value": "65L"
                 }
               }
             }
           }
         }
       ],
-      "categoryAxis": [
+      "value": [
         {
           "properties": {
-            "innerPadding": {
+            "fontSize": {
               "expr": {
                 "Literal": {
-                  "Value": "33L"
+                  "Value": "16D"
                 }
               }
             }
@@ -289,7 +296,7 @@
             "show": {
               "expr": {
                 "Literal": {
-                  "Value": "false"
+                  "Value": "true"
                 }
               }
             },
