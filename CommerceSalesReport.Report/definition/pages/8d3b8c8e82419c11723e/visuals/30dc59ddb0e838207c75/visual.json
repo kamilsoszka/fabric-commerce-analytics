@@ -1,16 +1,16 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
-  "name": "06aa32d0c3d0458dcad4",
+  "name": "30dc59ddb0e838207c75",
   "position": {
     "x": 0,
-    "y": 599.45000705119162,
-    "z": 2000,
+    "y": 0,
+    "z": 0,
     "height": 300,
-    "width": 360,
-    "tabOrder": 2000
+    "width": 400,
+    "tabOrder": 0
   },
   "visual": {
-    "visualType": "donutChart",
+    "visualType": "clusteredColumnChart",
     "query": {
       "queryState": {
         "Category": {
@@ -20,14 +20,14 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "dim_product"
+                      "Entity": "dim_customer"
                     }
                   },
-                  "Property": "product_color"
+                  "Property": "customer_name"
                 }
               },
-              "queryRef": "dim_product.product_color",
-              "nativeQueryRef": "product_color",
+              "queryRef": "dim_customer.customer_name",
+              "nativeQueryRef": "customer_name",
               "active": true
             }
           ]
@@ -88,17 +88,17 @@
                 }
               }
             },
-            "percentageLabelPrecision": {
+            "show": {
               "expr": {
                 "Literal": {
-                  "Value": "1L"
+                  "Value": "true"
                 }
               }
             },
-            "labelStyle": {
+            "bold": {
               "expr": {
                 "Literal": {
-                  "Value": "'Category, data value, percent of total'"
+                  "Value": "true"
                 }
               }
             }
@@ -118,26 +118,26 @@
           }
         }
       ],
-      "slices": [
+      "valueAxis": [
         {
           "properties": {
-            "innerRadiusRatio": {
+            "show": {
               "expr": {
                 "Literal": {
-                  "Value": "70L"
+                  "Value": "false"
                 }
               }
             }
           }
         }
       ],
-      "value": [
+      "categoryAxis": [
         {
           "properties": {
-            "fontSize": {
+            "innerPadding": {
               "expr": {
                 "Literal": {
-                  "Value": "18D"
+                  "Value": "33L"
                 }
               }
             }
@@ -152,7 +152,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Bottom 3 Colors'"
+                  "Value": "'Bottom 3 Customers'"
                 }
               }
             },
@@ -212,7 +212,7 @@
             "show": {
               "expr": {
                 "Literal": {
-                  "Value": "false"
+                  "Value": "true"
                 }
               }
             }
@@ -238,15 +238,15 @@
   "filterConfig": {
     "filters": [
       {
-        "name": "160af2919d6e615dc8ac",
+        "name": "77fa2a2bb8c42dc00ca9",
         "field": {
           "Column": {
             "Expression": {
               "SourceRef": {
-                "Entity": "dim_product"
+                "Entity": "dim_customer"
               }
             },
-            "Property": "product_color"
+            "Property": "customer_name"
           }
         },
         "type": "TopN",
@@ -262,7 +262,7 @@
                     "From": [
                       {
                         "Name": "d",
-                        "Entity": "dim_product",
+                        "Entity": "dim_customer",
                         "Type": 0
                       },
                       {
@@ -279,7 +279,7 @@
                               "Source": "d"
                             }
                           },
-                          "Property": "product_color"
+                          "Property": "customer_name"
                         },
                         "Name": "field"
                       }
@@ -307,7 +307,7 @@
             },
             {
               "Name": "d",
-              "Entity": "dim_product",
+              "Entity": "dim_customer",
               "Type": 0
             }
           ],
@@ -323,7 +323,7 @@
                             "Source": "d"
                           }
                         },
-                        "Property": "product_color"
+                        "Property": "customer_name"
                       }
                     }
                   ],
@@ -339,7 +339,7 @@
         }
       },
       {
-        "name": "a0c25c434d4b99eb8065",
+        "name": "de828f0ae209d25e022e",
         "field": {
           "Measure": {
             "Expression": {

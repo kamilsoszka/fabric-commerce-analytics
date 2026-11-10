@@ -6,11 +6,11 @@
     "y": 0,
     "z": 1,
     "height": 300,
-    "width": 360,
+    "width": 400,
     "tabOrder": 1
   },
   "visual": {
-    "visualType": "donutChart",
+    "visualType": "clusteredColumnChart",
     "query": {
       "queryState": {
         "Category": {
@@ -88,17 +88,17 @@
                 }
               }
             },
-            "percentageLabelPrecision": {
+            "show": {
               "expr": {
                 "Literal": {
-                  "Value": "1L"
+                  "Value": "true"
                 }
               }
             },
-            "labelStyle": {
+            "bold": {
               "expr": {
                 "Literal": {
-                  "Value": "'Category, data value, percent of total'"
+                  "Value": "true"
                 }
               }
             }
@@ -118,26 +118,26 @@
           }
         }
       ],
-      "slices": [
+      "valueAxis": [
         {
           "properties": {
-            "innerRadiusRatio": {
+            "show": {
               "expr": {
                 "Literal": {
-                  "Value": "70L"
+                  "Value": "false"
                 }
               }
             }
           }
         }
       ],
-      "value": [
+      "categoryAxis": [
         {
           "properties": {
-            "fontSize": {
+            "innerPadding": {
               "expr": {
                 "Literal": {
-                  "Value": "18D"
+                  "Value": "33L"
                 }
               }
             }
@@ -212,7 +212,7 @@
             "show": {
               "expr": {
                 "Literal": {
-                  "Value": "false"
+                  "Value": "true"
                 }
               }
             }
@@ -337,20 +337,6 @@
             }
           ]
         }
-      },
-      {
-        "name": "cc345e7022d070ca13d6",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "dax"
-              }
-            },
-            "Property": "Total Sales"
-          }
-        },
-        "type": "Advanced"
       }
     ]
   }

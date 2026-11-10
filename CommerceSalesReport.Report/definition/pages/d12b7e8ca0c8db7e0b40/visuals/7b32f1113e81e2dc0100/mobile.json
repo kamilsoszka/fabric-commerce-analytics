@@ -6,5 +6,24 @@
     "z": 1,
     "height": 360.199951171875,
     "width": 324
+  },
+  "visualContainerObjects": {
+    "title": [],
+    "subTitle": [],
+    "background": [],
+    "border": [],
+    "dropShadow": [
+      {
+        "properties": {
+          "show": {
+            "expr": {
+              "Literal": {
+                "Value": "true"
+              }
+            }
+          }
+        }
+      }
+    ]
   }
 }

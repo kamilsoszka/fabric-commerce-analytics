@@ -1,5 +1,5 @@
 {
-  "name": "Fluent2-CY26SU10",
+  "name": "Fluent2-CY26SU11",
   "dataColors": [
     "#118DFF",
     "#12239E",
@@ -521,6 +521,11 @@
     },
     "tableEx": {
       "*": {
+        "actionButtonSection": [
+          {
+            "show": true
+          }
+        ],
         "stylePreset": [
           {
             "name": "None"
@@ -754,6 +759,11 @@
     },
     "pivotTable": {
       "*": {
+        "actionButtonSection": [
+          {
+            "show": true
+          }
+        ],
         "stylePreset": [
           {
             "name": "None"

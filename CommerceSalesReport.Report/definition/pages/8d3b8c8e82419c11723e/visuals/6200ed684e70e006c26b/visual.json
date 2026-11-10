@@ -1,16 +1,16 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
-  "name": "be2b008e7c4106a74522",
+  "name": "6200ed684e70e006c26b",
   "position": {
     "x": 0,
-    "y": 299.72500352559581,
-    "z": 1000,
+    "y": 600,
+    "z": 2000,
     "height": 300,
-    "width": 360,
-    "tabOrder": 1000
+    "width": 400,
+    "tabOrder": 2000
   },
   "visual": {
-    "visualType": "donutChart",
+    "visualType": "clusteredColumnChart",
     "query": {
       "queryState": {
         "Category": {
@@ -23,11 +23,11 @@
                       "Entity": "dim_product"
                     }
                   },
-                  "Property": "product_name"
+                  "Property": "product_color"
                 }
               },
-              "queryRef": "dim_product.product_name",
-              "nativeQueryRef": "product_name",
+              "queryRef": "dim_product.product_color",
+              "nativeQueryRef": "product_color",
               "active": true
             }
           ]
@@ -88,17 +88,17 @@
                 }
               }
             },
-            "percentageLabelPrecision": {
+            "show": {
               "expr": {
                 "Literal": {
-                  "Value": "1L"
+                  "Value": "true"
                 }
               }
             },
-            "labelStyle": {
+            "bold": {
               "expr": {
                 "Literal": {
-                  "Value": "'Category, data value, percent of total'"
+                  "Value": "true"
                 }
               }
             }
@@ -118,26 +118,26 @@
           }
         }
       ],
-      "value": [
+      "valueAxis": [
         {
           "properties": {
-            "fontSize": {
+            "show": {
               "expr": {
                 "Literal": {
-                  "Value": "18D"
+                  "Value": "false"
                 }
               }
             }
           }
         }
       ],
-      "slices": [
+      "categoryAxis": [
         {
           "properties": {
-            "innerRadiusRatio": {
+            "innerPadding": {
               "expr": {
                 "Literal": {
-                  "Value": "70L"
+                  "Value": "33L"
                 }
               }
             }
@@ -152,11 +152,18 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Bottom 3 Products'"
+                  "Value": "'Bottom 3 Colors'"
                 }
               }
             },
-            "bold": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "titleWrap": {
               "expr": {
                 "Literal": {
                   "Value": "true"
@@ -170,7 +177,14 @@
                 }
               }
             },
-            "show": {
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "'15'"
+                }
+              }
+            },
+            "bold": {
               "expr": {
                 "Literal": {
                   "Value": "true"
@@ -189,6 +203,13 @@
                   "Value": "false"
                 }
               }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "'12'"
+                }
+              }
             }
           }
         }
@@ -202,6 +223,24 @@
                   "Value": "false"
                 }
               }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'background'"
+                    }
+                  }
+                }
+              }
+            },
+            "transparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
             }
           }
         }
@@ -212,7 +251,32 @@
             "show": {
               "expr": {
                 "Literal": {
-                  "Value": "false"
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#494949'"
+                    }
+                  }
+                }
+              }
+            },
+            "radius": {
+              "expr": {
+                "Literal": {
+                  "Value": "8D"
+                }
+              }
+            },
+            "width": {
+              "expr": {
+                "Literal": {
+                  "Value": "1D"
                 }
               }
             }
@@ -228,6 +292,176 @@
                   "Value": "false"
                 }
               }
+            },
+            "preset": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Custom'"
+                }
+              }
+            },
+            "transparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "86D"
+                }
+              }
+            },
+            "shadowSpread": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            },
+            "shadowBlur": {
+              "expr": {
+                "Literal": {
+                  "Value": "3D"
+                }
+              }
+            },
+            "angle": {
+              "expr": {
+                "Literal": {
+                  "Value": "90D"
+                }
+              }
+            },
+            "shadowDistance": {
+              "expr": {
+                "Literal": {
+                  "Value": "1D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "spacing": [
+        {
+          "properties": {
+            "customizeSpacing": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "verticalSpacing": {
+              "expr": {
+                "Literal": {
+                  "Value": "2D"
+                }
+              }
+            },
+            "spaceBelowSubTitle": {
+              "expr": {
+                "Literal": {
+                  "Value": "16D"
+                }
+              }
+            },
+            "spaceAbovePlotArea": {
+              "expr": {
+                "Literal": {
+                  "Value": "16D"
+                }
+              }
+            },
+            "spaceAboveDivider": {
+              "expr": {
+                "Literal": {
+                  "Value": "16D"
+                }
+              }
+            },
+            "spaceAboveSubtitle": {
+              "expr": {
+                "Literal": {
+                  "Value": "2D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "padding": [
+        {
+          "properties": {
+            "top": {
+              "expr": {
+                "Literal": {
+                  "Value": "14D"
+                }
+              }
+            },
+            "bottom": {
+              "expr": {
+                "Literal": {
+                  "Value": "16D"
+                }
+              }
+            },
+            "left": {
+              "expr": {
+                "Literal": {
+                  "Value": "16D"
+                }
+              }
+            },
+            "right": {
+              "expr": {
+                "Literal": {
+                  "Value": "16D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "visualHeader": [
+        {
+          "properties": {
+            "background": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#292929'"
+                    }
+                  }
+                }
+              }
+            },
+            "border": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#494949'"
+                    }
+                  }
+                }
+              }
+            },
+            "transparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            },
+            "foreground": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#F0F0F0'"
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -238,7 +472,7 @@
   "filterConfig": {
     "filters": [
       {
-        "name": "dcb8f1b055b1186aa2b1",
+        "name": "f1c5c72bdeed68b0b821",
         "field": {
           "Column": {
             "Expression": {
@@ -246,7 +480,7 @@
                 "Entity": "dim_product"
               }
             },
-            "Property": "product_name"
+            "Property": "product_color"
           }
         },
         "type": "TopN",
@@ -279,7 +513,7 @@
                               "Source": "d"
                             }
                           },
-                          "Property": "product_name"
+                          "Property": "product_color"
                         },
                         "Name": "field"
                       }
@@ -323,7 +557,7 @@
                             "Source": "d"
                           }
                         },
-                        "Property": "product_name"
+                        "Property": "product_color"
                       }
                     }
                   ],
@@ -339,7 +573,7 @@
         }
       },
       {
-        "name": "50e22b11ed0098920995",
+        "name": "a2e64676bb905b12d7c9",
         "field": {
           "Measure": {
             "Expression": {
